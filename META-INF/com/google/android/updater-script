@@ -1,0 +1,20 @@
+# Before: ui_print("  Hi! ");
+# Now:    ui_print " Hi! "
+#-----------Dynamic Installer Configs-----------#
+#The #MAGISK tag is required, dont remove it
+#MAGISK
+setdefault   magisk_support       on
+setdefault   ensure_rw            on
+setdefault   import_addons        off
+setdefault   apex_mount           off
+setdefault   overwrite_symlinks   off
+setdefault   devices              off
+setdefault   devices_alert        on
+setdefault   dalvik_memory        800M
+setdefault   extraction_speed     4M
+setdefault   off_readonly         ""
+setdefault   permissions          "0:0:0755:0644"
+#-----------------------------------------------#
+#Your script starts here:
+
+abort "Hm"

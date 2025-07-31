@@ -1,0 +1,181 @@
+#!/sbin/sh
+#Dynamic Installer by @BlassGO - CUSTOM SETUP
+
+#Basic functions
+true() { return 0; }
+false() { return 1; }
+echo2() { >&2 echo "$@"; }
+ui_print() { for __ in "$@"; do [ "$BOOTMODE" == false -a -n "$OUTFD" ] && echo -e "ui_print $__\nui_print" >> $OUTFD || echo "$__"; done; }
+abort() { ui_print " " "$@" " "; exit 1; }
+testrw() { for __ in "$@"; do { [ -d "$__" ] && echo > "$__/.rw$$" && rm -f "$__/.rw$$"; } || { echo2 '!'"Read-Only: $__"; return 1; }; done; }
+ensure_dir() { for __ in "$@"; do rm -rf "$__" 2>/dev/null; mkdir -p "$__" || abort "ERROR: Cant create folder $__"; done; }
+is_substring() { case $2 in *"$1"*) return 0 ;; *) return 1 ;; esac; }
+is64bit() { __=$(od -An -t x1 -j 4 -N 1 "$1"); case $__ in *"02"*) return 0 ;; *"01"*) return 1 ;; *) echo2 "is64bit: Unknown $__: $1"; return 2 ;; esac; }
+
+#Advanced functions
+bbForArch() {
+   for ARCH in "arch/${abi:-none}" arch/*; do
+      [ -d "$ARCH" ] || continue
+      cp -f $ARCH/busybox $bb; chmod 755 "$bb"
+      [ -x "$bb" ] && "$bb" >/dev/null 2>&1  && break
+   done
+   [ -f "$bb" ] && ARCH=${ARCH##*/} || abort "ERROR: Unsupported device architecture!"
+}
+ensureArch() {
+  _f_=$(readlink -f /system/bin/sh 2>/dev/null || readlink /proc/$PPID/exe 2>/dev/null || readlink /proc/self/exe 2>/dev/null || ps | awk '/sh|busybox/{print $NF; exit}' 2>/dev/null)
+  [ -e "$_f_" ] && { is64bit "$_f_" || ARCH="armeabi-v7a" ; }
+}
+bb_support() {
+  $bb_set || { bb_set=true; [ -n "$bb" ] && bb_list="$n$("$bb" --list)$n"; }
+  case $bb_list in *"$n$1$n"*) return 0 ;; *) return 1 ;; esac;
+}
+ensure_bin() {
+  _r_=0
+  for __ in "$@"; do
+    command -v $__ >/dev/null || {
+       bb_support $__ && eval "$__() { \"$bb\" $__ \"\$@\"; }" || { $needed && abort "ERROR: Could not define \"$__\" binary" || _r_=1; }
+    }
+  done
+  return $_r_
+}
+setup_bb() {
+  needed=false; ensure_bin umount ln
+  [ ! -f /system/bin/sh ] && { umount -l /system 2>/dev/null; mkdir -p /system/bin; ln -sf "$(command -v sh)" /system/bin/sh; }
+  "$bb" true || abort "ERROR:1: BusyBox cannot load on this device!"
+  "$bb" --install -s "$l" || {
+    for i in $("$bb" --list); do
+      ln -sf "$bb" "$l/$i" || "$bb" ln -sf "$bb" "$l/$i" || "$bb" ln -f "$bb" "$l/$i" || {
+        echo "#!$bb" > "$l/$i" && chmod 755 "$l/$i" || abort "ERROR:2: Failed to setup BusyBox"
+      }
+    done
+  }
+  [ -f "$l/sh" ] || abort "ERROR:3: Failed to setup BusyBox"
+}
+
+#BOOTMODE
+BOOTMODE=$( [ "$(getprop sys.boot_completed 2>/dev/null)" == 1 ] && echo true || { ps | grep -q "[z]ygote" || ps -A 2>/dev/null | grep -q "[z]ygote" && echo true || echo false ; } )
+
+#Start
+umask 022
+export PATH="/sbin:/system/bin:/sbin/su:/su/bin:/su/xbin:/system/xbin:/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH"
+bb_set=false; bb=$(command -v busybox); n="
+"
+needed=true;  ensure_bin mkdir chmod cp
+needed=false; ensure_bin rm
+abi=$(getprop ro.product.cpu.abi 2>/dev/null)
+
+#Ensure Temp directory
+for TMP in /data/tmp /dev/tmp /cache/tmp /mnt/tmp /tmp; do
+    mkdir -p $TMP 2>/dev/null; testrw $TMP && break || TMP=
+done
+[ -n "$TMP" ] || abort "ERROR: Failed to create temporary directory"
+
+#ARGS
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -i|-install)
+           [ -n "$2" ] && MYDIR="$2" || MYDIR="/data/data/com.termux/files/usr/bin"
+           [ -d "$MYDIR" ] || abort "setup: Cant find dir: $MYDIR"
+           if [ -f core -a -f static ]; then
+              WORK="$MYDIR/DI"
+              ensure_dir "$WORK"
+              cp -rf * "$WORK"
+              echo "su -c '. \"$WORK/setup\" \"$WORK\"'" > "$MYDIR/di"
+              chmod 755 "$MYDIR/di"
+              if [ -x "$MYDIR/di" ]; then
+                 echo -e "\nInstalled: \033[32mSuccess\033[0m\n\nCommand: \033[33mdi\n"
+                 exit
+              else
+                 echo -e "\nInstalled: \033[31mFailed\033[0m\n"
+                 abort
+              fi
+           else
+              abort "setup: CANNOT FIND A VALID ENVIRONMENT " 
+           fi
+           shift 2
+        ;;
+        *)
+          MYPATH="$1"
+          shift
+        ;;
+    esac
+done
+
+#Global vars
+export TMPDIR="$TMP" \
+DNM="META-INF/com/google/android/magisk" \
+addons="$TMP/zbin/addons" \
+l="$TMP/zbin/ugu" \
+TMP BOOTMODE OUTFD ZIPFILE PERSISTDIR CUSTOM_SETUP ARCH installzip
+
+#Extra
+rc="$TMP/0000001.tmp"
+rm -rf "$TMP" 2>/dev/null
+
+#Ensure work DIRs
+ensure_dir "$l" "$addons"
+[ -d "$MYPATH" ] && cd "$MYPATH"
+
+#Recovery Mode + Test Mode Implementation
+#(Maintenance or just testing for Devs)
+if [ -f core -a -f static ]; then
+   #Ensure BusyBox for ARCH
+   bb_set=false; bb="$TMP/zbin/busybox"; bbForArch
+   
+   $BOOTMODE && {
+      export PATH="/data/data/com.termux/files/usr/bin:/data/data/com.termux/files/usr/bin/applets:$PATH"
+      echo " >> Test Mode 1.8.0 "
+   } || {
+      export apex_mount=on
+      echo " >> Recovery Mode 1.2.0 "
+   }
+   export framework_res="/system/framework/framework-res.apk" apktool_aapt=off
+
+   echo " @BlassGO "
+   echo " "
+   [ -d "$MYPATH" ] && echo " -- Working from: $MYPATH"
+   echo " -- Loading environment..."
+   echo " "
+   
+   #Ensure BusyBox Environment
+   setup_bb; export PATH="$l:$PATH"
+   
+   #Rectify ARCH for 32bit devices
+   ensureArch
+   
+   #Loading bin & static
+   for bin in "arch/$ARCH/bin" static; do
+      unzip -qo "$bin" -d "$addons" || abort "ERROR: Cant get $bin"
+   done
+  
+   #Loading extra.zip (Optional)
+   [ -f "extra.zip" ] && {
+      is_substring $ARCH "$(unzip -l "extra.zip" "$ARCH/")" && {
+         unzip -qoj extra.zip "$ARCH/*" -d "$addons"
+      } || {
+         echo2 "setup: extra.zip does not include additions to your architecture"
+      }
+   }
+   
+   #Getting version
+   export di_version=$(grep -Eo "[0-9]+\.[0-9]+[-[:alnum:]]*" version.txt 2>/dev/null)
+   
+   #Getting configs
+   cp -f configs/* -t "$l"
+  
+   #Finish
+   rm -f "$addons/info.txt" 
+   chmod -R 755 "$addons"
+   mv -f "$addons"/* -t "$l"
+   
+   echo '
+   shopt -s checkwinsize
+   export HISTFILE="'$TMP'/zbin/bash_history"
+   . ./core
+   rm -f "'$rc'"
+   ' > "$rc"
+   [ ! -f "$rc" ] && abort "setup: Invalid $rc"
+   bash --rcfile "$rc"
+else
+   abort "setup: CANNOT FIND A VALID ENVIRONMENT "
+fi

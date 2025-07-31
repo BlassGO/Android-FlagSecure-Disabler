@@ -1,0 +1,32 @@
+BY topjohnwu {
+   URL: https://github.com/topjohnwu/Magisk
+   CONTENTS: busybox
+}
+
+BY Zackptg5 {
+  URL: https://github.com/Zackptg5/Cross-Compiled-Binaries-Android
+  CONTENTS: '
+    bash
+    keycheck
+    xxd
+    zip
+  '
+}
+
+BY Maximoff {
+  URL: https://github.com/Maximoff/binaries
+  CONTENTS: '
+     aapt
+     zipalign
+  '
+}
+
+BY DualJoe {
+   URL: https://xdaforums.com/t/exe-static-linux-binaries-for-arm-android-cryptsetup-encfs-f2fs-tools-testdisk-photorec.3709380/post-82757251
+   CONTENTS: fxz
+}
+
+BY munjeni {
+  URL: https://github.com/munjeni/super_image_dumper
+  CONTENTS: losetup2
+}

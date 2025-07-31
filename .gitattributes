@@ -1,0 +1,5 @@
+* text=auto eol=lf
+**/busybox binary
+**/bin binary
+**/static binary
+*.zip binary

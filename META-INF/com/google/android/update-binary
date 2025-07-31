@@ -1,0 +1,119 @@
+#!/sbin/sh
+#Dynamic Installer by @BlassGO --- Also uses code from @osm0sis and @topjohnwu
+
+#Basic functions
+true() { return 0; }
+false() { return 1; }
+echo2() { >&2 echo "$@"; }
+ui_print() { for __ in "$@"; do [ "$BOOTMODE" == false -a -n "$OUTFD" ] && echo -e "ui_print $__\nui_print" >> $OUTFD || echo "$__"; done; }
+abort() { ui_print " " "$@" " "; exit 1; }
+testrw() { for __ in "$@"; do { [ -d "$__" ] && echo > "$__/.rw$$" && rm -f "$__/.rw$$"; } || { echo2 '!'"Read-Only: $__"; return 1; }; done; }
+ensure_dir() { for __ in "$@"; do rm -rf "$__" 2>/dev/null; mkdir -p "$__" || abort "ERROR: Cant create folder $__"; done; }
+is_substring() { case $2 in *"$1"*) return 0 ;; *) return 1 ;; esac; }
+is64bit() { __=$(od -An -t x1 -j 4 -N 1 "$1"); case $__ in *"02"*) return 0 ;; *"01"*) return 1 ;; *) echo2 "is64bit: Unknown $__: $1"; return 2 ;; esac; }
+
+#Advanced functions
+bb_support() {
+  $bb_set || { bb_set=true; [ -n "$bb" ] && bb_list="$n$("$bb" --list)$n"; }
+  case $bb_list in *"$n$1$n"*) return 0 ;; *) return 1 ;; esac;
+}
+ensure_bin() {
+  _r_=0
+  for __ in "$@"; do
+    command -v $__ >/dev/null || {
+       bb_support $__ && eval "$__() { \"$bb\" $__ \"\$@\"; }" || { $needed && abort "ERROR: Could not define \"$__\" binary" || _r_=1; }
+    }
+  done
+  return $_r_
+}
+bbForArch() {
+  for ARCH in "arch/${abi:-none}" arch/*; do
+     [ -d "$ARCH" ] && bbpath="$ARCH/busybox" && chmod 755 "$bbpath" || continue
+     [ -x "$bbpath" ] && "$bbpath" >/dev/null 2>&1 && { mv -f "$bbpath" "$bb"; break; }
+  done
+  [ -f "$bb" ] && ARCH=${ARCH##*/} || abort "ERROR: Unsupported device architecture!"
+}
+ensureArch() {
+  _f_=$(readlink -f /system/bin/sh 2>/dev/null || readlink /proc/$PPID/exe 2>/dev/null || readlink /proc/self/exe 2>/dev/null || ps | awk '/sh|busybox/{print $NF; exit}' 2>/dev/null)
+  [ -e "$_f_" ] && { is64bit "$_f_" || ARCH="armeabi-v7a" ; echo2 "$ARCH: $_f_"; }
+}
+setup_bb() {
+  needed=false; ensure_bin umount ln
+  [ ! -f /system/bin/sh ] && { umount -l /system 2>/dev/null; mkdir -p /system/bin; ln -sf "$(command -v sh)" /system/bin/sh; }
+  "$bb" true || abort "ERROR:1: BusyBox cannot load on this device!"
+  "$bb" --install -s "$l" || {
+    for i in $("$bb" --list); do
+      ln -sf "$bb" "$l/$i" || "$bb" ln -sf "$bb" "$l/$i" || "$bb" ln -f "$bb" "$l/$i" || {
+        echo "#!$bb" > "$l/$i" && chmod 755 "$l/$i" || abort "ERROR:2: Failed to setup BusyBox"
+      }
+    done
+  }
+  [ -f "$l/sh" ] || abort "ERROR:3: Failed to setup BusyBox"
+}
+setup() {
+  #Ensure work DIRs
+  ensure_dir "$l"
+  
+  #Extract contents
+  unzip -qo "$installzip" "META-INF/zbin/*" -d $TMP || abort "ERROR: Failed to extract contents"
+  ROOT="$TMP/META-INF/zbin"
+  
+  #Check contents
+  [ -f "$ROOT/core" ] && cd "$ROOT" || abort "ERROR: Failed to extract contents"
+  
+  #Ensure BusyBox for ARCH
+  bb="$TMP/zbin/busybox"; bbForArch
+  
+  #Ensure BusyBox Environment
+  setup_bb; export PATH="$l:$PATH"
+  
+  #Rectify ARCH for 32bit devices
+  ensureArch
+  
+  #Loading bin & static
+  for bin in "arch/$ARCH/bin" static; do
+     unzip -qo "$bin" -d configs || abort "ERROR: Cant get $bin"
+  done
+  
+  #Getting version
+  di_version=$(grep -Eo "[0-9]+\.[0-9]+[-[:alnum:]]*" version.txt 2>/dev/null)
+  
+  #Getting configs & bins
+  chmod -R 755 configs
+  mv -f configs/* -t "$l"
+  mv -f core "$TMP/zbin/core"; cd $TMP
+  rm -rf "$TMP/META-INF" "$TMP/extra.zip" "$l/info.txt" 2>/dev/null
+  
+  #Start Installation
+  bash "$TMP/zbin/core"
+  [ $? == 130 ] && exit 1 || exit 0
+}
+
+#General vars
+[ -n "$2" -a -e "/proc/self/fd/$2" ] && OUTFD="/proc/self/fd/$2" || OUTFD=
+[ -f "$3" ] && installzip="$3" ZIPFILE="$3" PERSISTDIR=/sbin/.magisk/mirror/persist || installzip="$ZIPFILE" CUSTOM_SETUP=2
+BOOTMODE=$( [ "$(getprop sys.boot_completed 2>/dev/null)" == 1 ] && echo true || { ps | grep -q "[z]ygote" || ps -A 2>/dev/null | grep -q "[z]ygote" && echo true || echo false ; } )
+
+#Start
+umask 022
+export PATH="/sbin:/system/bin:/sbin/su:/su/bin:/su/xbin:/system/xbin:/data/adb/magisk:/data/adb/ksu/bin:/data/adb/ap/bin:$PATH"
+bb_set=false; bb=$(command -v busybox); n="
+"
+needed=true;  ensure_bin unzip mkdir chmod mv
+needed=false; ensure_bin rm
+abi=$(getprop ro.product.cpu.abi 2>/dev/null)
+
+#Ensure Temp directory
+for TMP in /dev/tmp$$ /cache/tmp$$ /mnt/tmp$$ /data/tmp$$ /data/local/tmp$$; do
+    mkdir -p $TMP 2>/dev/null && break
+done
+[ -d "$TMP" ] || abort "ERROR: Failed to create temporary directory"
+
+#Global vars
+export TMPDIR="$TMP" \
+DNM="META-INF/com/google/android/magisk" \
+addons="$TMP/zbin/addons" \
+l="$TMP/zbin/ugu" \
+TMP BOOTMODE OUTFD ZIPFILE PERSISTDIR CUSTOM_SETUP ARCH installzip di_version
+
+setup

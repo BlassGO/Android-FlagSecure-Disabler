@@ -19,31 +19,16 @@ fi
 ui_print " "
 
 #Needed variables
-stock_services="/system/framework/services.jar"
-mod_services="$MODPATH/system/framework/services.jar"
-
 disable='
-    .locals 1
-
-    const/4 v0, 0x0
-
-    return v0
+   .locals 1
+   const/4 v0, 0x0
+   return v0
 '
 
 dummy='
-    .registers 6
-    return-void
+   .registers 6
+   return-void
 '
-
-#Check Deodex
-if ! check_content classes.dex "$stock_services"; then
-    ui_print " "
-    abort " You need a deodexed services.jar"
-fi
-
-#Making magisk space
-ui_print " >> Making magisk space "
-create_dir "$(dirname "$mod_services")"
 
 #Flags
 SS_OBSERVER=false
@@ -65,51 +50,91 @@ if $yes; then
    SS_OBSERVER=true
 fi
 
-#Decompiling
-ui_print " >> Decompiling services.jar..."
-dynamic_apktool -decompile "$stock_services" -o "$TMP/services"
-ui_print " "
+# Patch
+for jar_dir in "/system/framework" "/system_ext/framework"; do
+   for jar_name in "services" "miui-services"; do
+      
+      jar_path="$jar_dir/$jar_name.jar"
 
-#Smali patch with Smali Tool Kit
-PATCH=false
-ui_print " >> Disabling Flag Secure..."
-smali_kit -c -m "isSecureLocked" -re "$disable" -d "$TMP/services" -name "WindowManagerService*" -name "WindowState*" && PATCH=true
-if $SS_OBSERVER; then
-   smali_kit -c -m "registerScreenCaptureObserver" -re "$dummy" -d "$TMP/services" -name "IActivityTaskManager*" -name "ActivityTaskManagerService*" && PATCH=true
-fi
-smali_kit -c -m "preventTakingScreenshotToTargetWindow" -re "$disable" -d "$TMP/services" -name "ScreenshotController*" && PATCH=true
-ui_print " "
+      if exist file "$jar_path"; then
+         # For modules, the standard path $MODPATH/system/... must be guaranteed
+         if is_substring "/system/" "$jar_path"; then
+            system_prefix=true
+            mod_jar_path="$MODPATH$jar_path"
+         else
+            system_prefix=false
+            mod_jar_path="$MODPATH/system$jar_path"
+         fi
+      else
+         continue
+      fi
 
-#Check Patchs
-if not $PATCH; then
-   abort "    No compatible patches"
-fi
+      #Check Deodex
+      if ! check_content classes.dex "$jar_path"; then
+         ui_print " "
+         abort " You need a deodexed $jar_name.jar"
+      fi
 
-#Recompiling
-ui_print " >> Recompiling services.jar..."
-dynamic_apktool -preserve-signature -recompile "$TMP/services" -o "$mod_services"
+      #Making magisk space
+      create_dir "$(dirname "$mod_jar_path")"
 
-#Check build
-if is_valid "$mod_services"; then
-    #Removing native odex (Stock firmwares)
-    if exist folder /system/framework/oat; then
-       for arm in /system/framework/oat/*; do
-          for oat in services.art services.odex services.vdex; do
-              if exist file "$arm/$oat"; then
-                 create_dir "$MODPATH$arm"
-                 # KSU Support
-                 mknod "$MODPATH$arm/$oat" c 0 0
-              fi
-          done
-       done
-    fi
-else
-    abort "   Some ERROR occurred during the recompilation of services.jar ! "
-fi
+      #Decompiling
+      ui_print " >> Decompiling $jar_name.jar..."
+      dynamic_apktool -decompile "$jar_path" -o "$TMP/services"
+      ui_print " "
 
-#Permissions / Contexts
-set_perm 0 0 0644 "$mod_services"
-set_context "$stock_services" "$mod_services"
+      #Smali patch with Smali Tool Kit
+      PATCH=false
+      ui_print " >> Disabling Flag Secure..."
+      smali_kit -c -m "isSecureLocked" -re "$disable" -d "$TMP/services" -name "WindowManagerService*" -name "WindowState*" && PATCH=true
+      smali_kit -c -m "notAllowCaptureDisplay" -re "$disable" -d "$TMP/services" -name "WindowManagerService*" -name "WindowState*" && PATCH=true
+      if $SS_OBSERVER; then
+         smali_kit -c -m "registerScreenCaptureObserver" -re "$dummy" -d "$TMP/services" -name "IActivityTaskManager*" -name "ActivityTaskManagerService*" && PATCH=true
+      fi
+      smali_kit -c -m "preventTakingScreenshotToTargetWindow" -re "$disable" -d "$TMP/services" -name "ScreenshotController*" && PATCH=true
+      ui_print " "
+
+      #Check Patchs
+      if not $PATCH; then
+         abort "    No compatible patches"
+      fi
+
+      #Recompiling
+      ui_print " >> Recompiling $jar_name.jar..."
+      dynamic_apktool -preserve-signature -recompile "$TMP/services" -o "$mod_jar_path"
+
+      #Check build
+      if is_valid "$mod_jar_path"; then
+         #Removing native odex (Stock firmwares)
+         if exist folder "$jar_dir/oat"; then
+            for arm in "$jar_dir/oat"/*; do
+               if $system_prefix; then
+                  mod_oat_path="$MODPATH$arm"
+               else
+                  mod_oat_path="$MODPATH/system$arm"
+               fi
+               for oat in $jar_name.art $jar_name.odex $jar_name.vdex; do
+                  if exist file "$arm/$oat"; then
+                     create_dir "$mod_oat_path"
+                     # KSU Support
+                     mknod "$mod_oat_path/$oat" c 0 0
+                  fi
+               done
+            done
+         fi
+      else
+         abort "   Some ERROR occurred during the recompilation of $jar_name.jar ! "
+      fi
+
+      #Permissions / Contexts
+      set_perm 0 0 0644 "$mod_jar_path"
+      set_context "$jar_path" "$mod_jar_path"
+
+      #Clean up for the next JAR
+      delete_recursive "$TMP/services"
+      ui_print " "
+   done
+done
 
 ui_print " "
 ui_print " >> Done "

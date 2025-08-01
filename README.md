@@ -15,6 +15,7 @@ A `Magisk/KSU` module for advanced users and custom ROM developers.
 ## 💻 **Compatibility**
 
 * Any Android device with **Magisk**, **KSU**, or their derivatives.
+* Added support to ``miui-services.jar`` (HyperOS)
 * Tested on Android 10-15.
 
 ---
@@ -49,6 +50,8 @@ A `Magisk/KSU` module for advanced users and custom ROM developers.
 Once you've confirmed the patch works properly on your device, apply it to your Custom ROM as follows:
 
 1. **Copy or ask your tester for `/system/framework/services.jar`.**
+   
+   **HyperOS:** Also copy or ask your tester for `/system_ext/framework/miui-services.jar`.
 2. Please include proper credits and acknowledge the original source of these modifications in your ROM's documentation.
 
 ---

@@ -32,6 +32,7 @@ dummy='
 
 #Flags
 SS_OBSERVER=false
+DRM=false
 print "
       <box>
          <center>
@@ -49,6 +50,27 @@ print "
 if $yes; then
    SS_OBSERVER=true
 fi
+ui_print " "
+
+print "
+      <box>
+         <center>
+            Disable DRM
+            (Digital Restrictions)
+         </center>
+         <linebox/>
+         <center>
+            Yes = Volume Up
+            No = Volume Down
+         </center>
+         <linebox/>
+         Press a button to continue...
+      </box>
+" 30
+if $yes; then
+   DRM=true
+fi
+ui_print " "
 
 # Patch
 for jar_dir in "/system/framework" "/system_ext/framework"; do
@@ -113,11 +135,11 @@ for jar_dir in "/system/framework" "/system_ext/framework"; do
                else
                   mod_oat_path="$MODPATH/system$arm"
                fi
-               for oat in $jar_name.art $jar_name.odex $jar_name.vdex; do
-                  if exist file "$arm/$oat"; then
+               for ext in art odex vdex; do
+                  if exist file "$arm/$jar_name.$ext"; then
                      create_dir "$mod_oat_path"
                      # KSU Support
-                     mknod "$mod_oat_path/$oat" c 0 0
+                     mknod "$mod_oat_path/$jar_name.$ext" c 0 0
                   fi
                done
             done
@@ -135,6 +157,19 @@ for jar_dir in "/system/framework" "/system_ext/framework"; do
       ui_print " "
    done
 done
+
+if $DRM; then
+   for lib_dir in /system/lib /system/lib64 /vendor/lib /vendor/lib64; do
+      lib_path="$lib_dir/liboemcrypto.so"
+      if exist "$lib_path"; then
+         if is_substring "/system/" "$lib_path"; then
+            create_file "$MODPATH$lib_path"
+         else
+            create_file "$MODPATH/system$lib_path"
+         fi
+      fi
+   done
+fi
 
 ui_print " "
 ui_print " >> Done "

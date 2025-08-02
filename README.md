@@ -30,18 +30,25 @@ A `Magisk/KSU` module for advanced users and custom ROM developers.
   Allows you to prevent third-party apps from registering when you take screenshots.  
   
   **⚠️ Warning**: Disabling the Screenshot Observer may interfere with the functionality of specialized screenshot apps that rely on detecting screenshot events.
-
+* **DRM (Digital Restrictions Management) Disabler**
+  
+  Provides a basic solution for multimedia content that won't load or displays an error message due to DRM verification failures.
+  
+  **⚠️ Warning**: This isn't a true fix for the DRM; rather, it's a force solution that disables it. While it may work in most cases, it can also cause limitations in some apps, such as preventing the use of high-quality options and more.
 ---
 
 ## 🚀 **Installation**
 
 1. Get the latest `FlagSecure-Disabler.zip` from [Here](https://blassgo.blogspot.com/#id=android-projects-user&author=BlassGO&category=MAGISK&year=2025&title=FlagSecure%20Disabler).
 2. Install via Magisk/KSU: Wait patiently, the process may take a while.
-3. During installation, you will be prompted to disable the **Screenshot Observer**:
+3. You will be prompted to disable the **Screenshot Observer**:
    - Press **Volume Up** to disable.
    - Press **Volume Down** to skip.
-4. **Reboot** your device once flashing is complete.
-5. Now, try taking screenshots freely!
+4. You will be prompted to disable the **DRM**:
+   - Press **Volume Up** to disable.
+   - Press **Volume Down** to skip.
+5. **Reboot** your device once flashing is complete.
+6. Now, try taking screenshots freely!
 
 ---
 

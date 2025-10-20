@@ -15,7 +15,6 @@ jobs:
 
       - name: Build Magisk module ZIP
         run: |
-          cd module
           zip -r9 ../flagsecure-disabler.zip * -x "*.git*" -x "*.DS_Store*"
 
       - name: Upload artifact

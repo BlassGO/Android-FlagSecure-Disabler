@@ -1,0 +1,25 @@
+name: Build Magisk Module
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Build Magisk module ZIP
+        run: |
+          cd module
+          zip -r9 ../flagsecure-disabler.zip * -x "*.git*" -x "*.DS_Store*"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flagsecure-disabler
+          path: flagsecure-disabler.zip

@@ -13,15 +13,15 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v5
 
-      - name: Build Magisk module ZIP
+      - name: Prepare Magisk module folder
         run: |
-          zip -r9 flagsecure-disabler.zip ./* -x "*.git*" -x "*.github*" -x "*.DS_Store*"
+          mkdir flagsecure-disabler
+          rsync -av --exclude='.git' --exclude='.github' --exclude='.DS_Store' ./ flagsecure-disabler/ --delete
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: flagsecure-disabler
-          path: ./flagsecure-disabler.zip
+          path: flagsecure-disabler
           if-no-files-found: error
           retention-days: 90
-          upload-as: file

@@ -15,10 +15,13 @@ jobs:
 
       - name: Build Magisk module ZIP
         run: |
-          zip -r9 flagsecure-disabler.zip * -x "*.git*" -x "*.DS_Store*"
+          zip -r9 flagsecure-disabler.zip ./* -x "*.git*" -x "*.github*" -x "*.DS_Store*"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: flagsecure-disabler
-          path: flagsecure-disabler.zip
+          path: ./flagsecure-disabler.zip
+          if-no-files-found: error
+          retention-days: 90
+          upload-as: file

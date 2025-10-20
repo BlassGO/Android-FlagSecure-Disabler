@@ -15,7 +15,7 @@ jobs:
 
       - name: Build Magisk module ZIP
         run: |
-          zip -r9 ../flagsecure-disabler.zip * -x "*.git*" -x "*.DS_Store*"
+          zip -r9 flagsecure-disabler.zip * -x "*.git*" -x "*.DS_Store*"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

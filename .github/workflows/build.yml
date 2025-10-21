@@ -16,7 +16,7 @@ jobs:
       - name: Prepare Magisk module folder
         run: |
           mkdir flagsecure-disabler
-          rsync -av --exclude='.git' --exclude='.github' --exclude='.DS_Store' ./ flagsecure-disabler/ --delete
+          rsync -av --exclude='.git' --exclude='.github' --exclude='.DS_Store' --exclude='*.md' ./ flagsecure-disabler/ --delete
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

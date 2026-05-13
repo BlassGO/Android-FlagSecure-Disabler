@@ -1,77 +1,68 @@
-# 🔒 FlagSecure + Screenshot Observer Disabler
+# FlagSecure & Screenshot Observer Disabler
 
-A `Magisk/KSU` module for advanced users and custom ROM developers.
+![Build Status](https://github.com/BlassGO/Android-FlagSecure-Disabler/actions/workflows/build.yml/badge.svg)
+![Version](https://img.shields.io/badge/version-v1.2.2-blue)
+![Platform](https://img.shields.io/badge/platform-Android_10--15-success)
+![Author](https://img.shields.io/badge/author-BlassGO-orange)
 
----
-
-## 🚨 **DISCLAIMER**
-
-> - This module is intended for rooted users who have already voided their device's warranty by rooting.
-> - By downloading, installing, or using this module, you acknowledge and agree that you assume full responsibility for any and all risks, including potential damage to your device, data loss, soft-bricks, hard-bricks, or any other issues that may arise from its use.
-> - You assume responsibility for potentially violating legal agreements or terms of service with third-party apps you use. The developer does not promote or endorse the violation of any third-party app's terms of service; the user is solely responsible for accepting and adhering to those terms and for any modifications made to their device.
+Magisk and KernelSU module for managing system-level capture flags and screenshot observers.
 
 ---
 
-## 💻 **Compatibility**
-
-* Any Android device with **Magisk**, **KSU**, or their derivatives.
-* Added support to ``miui-services.jar`` (HyperOS)
-* Tested on Android 10-15.
+> [!CAUTION]
+> **Disclaimer**  
+> This tool is intended for rooted environments. The user assumes responsibility for potential risks, including device instability, data loss, or conflicts with service agreements.
 
 ---
 
-## ℹ️ **About**
+## Capabilities
 
-* **FlagSecure Disabler**
-  
-  Gives you the freedom to take screenshots anywhere on your device, without restrictions
-* **Screenshot Observer Disabler (Android 14+)**
-  
-  Allows you to prevent third-party apps from registering when you take screenshots.  
-  
-  **⚠️ Warning**: Disabling the Screenshot Observer may interfere with the functionality of specialized screenshot apps that rely on detecting screenshot events.
-* **DRM (Digital Restrictions Management) Disabler**
-  
-  Provides a basic solution for multimedia content that won't load or displays an error message due to DRM verification failures.
-  
-  **⚠️ Warning**: This isn't a true fix for the DRM; rather, it's a force solution that disables it. While it may work in most cases, it can also cause limitations in some apps, such as preventing the use of high-quality options and more.
----
-
-## 🚀 **Installation**
-
-1. Get the latest `FlagSecure-Disabler.zip` from [Here](https://blassgo.blogspot.com/#id=android-projects-user&author=BlassGO&category=MAGISK&year=2025&title=FlagSecure%20Disabler).
-2. Install via Magisk/KSU: Wait patiently, the process may take a while.
-3. You will be prompted to disable the **Screenshot Observer**:
-   - Press **Volume Up** to disable.
-   - Press **Volume Down** to skip.
-4. You will be prompted to disable the **DRM**:
-   - Press **Volume Up** to disable.
-   - Press **Volume Down** to skip.
-5. **Reboot** your device once flashing is complete.
-6. Now, try taking screenshots freely!
+> [!NOTE]
+> - **FlagSecure Disabler**: Enables taking screenshots anywhere on the device without restrictions.
+> - **Screenshot Observer Disabler**: Prevents the system from notifying applications when a screenshot event occurs (Android 14+), ensuring the capture is not registered by third-party apps.
+> - **DRM Disabler**: Addresses compatibility issues in restricted multimedia environments. Note: This is a forced workaround, not a native fix.
 
 ---
 
-## 📝 **Integrating Changes**
+## Technical Architecture
 
-Once you've confirmed the patch works properly on your device, apply it to your Custom ROM as follows:
-
-1. **Copy or ask your tester for `/system/framework/services.jar`.**
-   
-   **HyperOS:** Also copy or ask your tester for `/system_ext/framework/miui-services.jar`.
-2. Please include proper credits and acknowledge the original source of these modifications in your ROM's documentation.
+> [!NOTE]
+> This implementation is powered by the [DynamicInstaller](https://github.com/BlassGO/DynamicInstaller) framework, which utilizes a native version of Apktool to patch `services.jar` (and `miui-services.jar`) at the bytecode level during installation. This approach eliminates the need for **Zygisk** or active process hooking. Modified files are stored in the module directory and mounted over the original system files, keeping the `/system` partition read-only. Disabling or removing the module restores default system behavior instantly.
 
 ---
 
-## ☕ **Support the Developer**
-
-If you find this module useful, consider buying me a coffee to support my work! If you're not able to, starring the repository helps a lot too!
-
-<a href="https://www.buymeacoffee.com/BlassGO" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px !important;width: 170px !important;" ></a>
+> [!WARNING]
+> **Android 16 Compatibility**  
+> Installations on Android 16 may fail due to **Dex Containers**, which currently limit standard decompilation. See [Issue #2](https://github.com/BlassGO/Android-FlagSecure-Disabler/issues/2) for more details.
 
 ---
 
-## ✨ **Credits**
+## Integration for Custom ROMs
 
-* **[BlassGO](https://github.com/BlassGO)**: Developer of this module.
-* **[DynamicInstaller](https://github.com/BlassGO/DynamicInstaller)**: Base framework used.
+Developers can use the patched files generated by this module to integrate modifications directly into a ROM build.
+
+1. **Extract Patched Files**: Retrieve the modified JARs from the device after installation:
+   - Standard: `/system/framework/services.jar`
+   - HyperOS: `/system_ext/framework/miui-services.jar`
+2. **Attribution**: Please provide proper credits to the original source when integrating these changes.
+
+---
+
+## Installation
+
+1. **Download**: Obtain the latest build from [GitHub Actions](https://github.com/BlassGO/Android-FlagSecure-Disabler/actions/workflows/build.yml) or the [Mirror Blog](https://blassgo.blogspot.com/#id=android-projects-user&author=BlassGO&category=MAGISK&year=2025&title=FlagSecure%20Disabler).
+2. **Flash**: Install via a root manager like Magisk or KernelSU. Please wait patiently as the patching process may take some time.
+3. **Configure**: Use hardware volume keys when prompted:
+   - **Screenshot Observer**: Volume Up to disable, Volume Down to skip.
+   - **DRM**: Volume Up to disable, Volume Down to skip.
+4. **Reboot**: Restart the device to apply the patches.
+5. **Success**: Now, try taking screenshots freely!
+
+---
+
+## Credits
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Donate-Support-yellow?style=for-the-badge&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/BlassGO)
+
+- **[BlassGO](https://github.com/BlassGO)**: Developer.
+- **[DynamicInstaller](https://github.com/BlassGO/DynamicInstaller)**: Patching framework.
